@@ -3,7 +3,8 @@
   #include <avr/power.h>
 #endif
 
-#define PIN 6
+#define PIN 2
+const int SENSOR_PIN = 0;
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -27,14 +28,25 @@ void setup() {
   #endif
   // End of trinket special code
 
+// initialize the motion sensor pin as an input:
+  pinMode(SENSOR_PIN, INPUT);
 
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 }
 
 void loop() {
+  // read the state of the pushbutton value:
+  int motionDetected = digitalRead(SENSOR_PIN);
+
+  if (motionDetected == LOW) {
+    return;
+  }
+  
   // Some example procedures showing how to display to the pixels:
-  colorWipe(strip.Color(255, 0, 0), 50); // Red
+  colorWipe(strip.Color(0, 0, 255), 6); // Red
+  colorWipe(strip.Color(0, 0, 0), 6); // off
+  return;
   colorWipe(strip.Color(0, 255, 0), 50); // Green
   colorWipe(strip.Color(0, 0, 255), 50); // Blue
 //colorWipe(strip.Color(0, 0, 0, 255), 50); // White RGBW
