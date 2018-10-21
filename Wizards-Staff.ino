@@ -3,8 +3,20 @@
   #include <avr/power.h>
 #endif
 
-#define PIN 2
+#define SPELL_PIN 2
 const int SENSOR_PIN = 0;
+const int CONJURE_MODE_BUTTON_PIN = 4;
+const int CONJURE_MODE_LED_PIN = 1;
+
+// Conjuring
+int conjureLedState = LOW;         // the current state of the output pin
+int conjureButtonState;           // the current reading from the input pin
+int lastConjureButtonState = LOW; // the previous reading from the input pin
+
+// the following variables are unsigned longs because the time, measured in
+// milliseconds, will quickly become a bigger number than can be stored in an int.
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -14,7 +26,7 @@ const int SENSOR_PIN = 0;
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, SPELL_PIN, NEO_GRB + NEO_KHZ800);
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -31,15 +43,59 @@ void setup() {
 // initialize the motion sensor pin as an input:
   pinMode(SENSOR_PIN, INPUT);
 
+// initialize the conjure mode:
+  pinMode(CONJURE_MODE_BUTTON_PIN, INPUT);
+  pinMode(CONJURE_MODE_LED_PIN, OUTPUT);
+// set initial conjure mode LED state
+  digitalWrite(CONJURE_MODE_LED_PIN, conjureLedState);
+
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 }
 
 void loop() {
-  // read the state of the pushbutton value:
+  // read the state of the motion sensor value:
   int motionDetected = digitalRead(SENSOR_PIN);
 
-  if (motionDetected == LOW) {
+// Conjure Mode
+// read the state of the switch into a local variable:
+  int reading = digitalRead(CONJURE_MODE_BUTTON_PIN);
+
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH), and you've waited long enough
+  // since the last press to ignore any noise:
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastConjureButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != conjureButtonState) {
+      conjureButtonState = reading;
+
+      // only toggle the LED if the new button state is HIGH
+      if (conjureButtonState == HIGH) {
+        conjureLedState = !conjureLedState;
+      }
+    }
+  }
+
+  // set the LED:
+  digitalWrite(CONJURE_MODE_LED_PIN, conjureLedState);
+
+  // save the reading. Next time through the loop, it'll be the lastButtonState:
+  lastConjureButtonState = reading;
+// End Conjure Mode
+
+  if (conjureLedState == LOW) {
+    return;
+  } else if (motionDetected == LOW) {
     return;
   }
   
